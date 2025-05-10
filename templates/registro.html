@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro de Usuario</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #e0f7fa, #b2ebf2);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background-color: white;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .header img {
+            height: 50px;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-box {
+            background-color: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .form-box h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #00796b;
+        }
+
+        .form-box input, .form-box select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .form-box button {
+            width: 100%;
+            padding: 10px;
+            background-color: #0097a7;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .form-box button:hover {
+            background-color: #007c91;
+        }
+
+        .form-box a {
+            display: block;
+            margin-top: 10px;
+            text-align: center;
+            color: #00796b;
+            text-decoration: none;
+        }
+
+        .form-box a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="https://web.udi.edu.co/files/img/logo-udi-web.png" alt="Logo UDI">
+    </div>
+
+    <div class="container">
+        <div class="form-box">
+            <h2>Registro de Usuario</h2>
+            <form action="/registro" method="post">
+                <input type="text" name="documento" placeholder="Número de documento" required>
+                <input type="text" name="nombre" placeholder="Nombre" required>
+                <input type="text" name="apellido" placeholder="Apellido" required>
+                <input type="email" name="correo" placeholder="Correo" required>
+                <input type="text" name="telefono" placeholder="Teléfono" required>
+
+                <label for="tipousuario">Tipo de usuario</label>
+                <select name="tipousuario" required>
+                    <option value="">Seleccione...</option>
+                    <option value="docente">Docente</option>
+                    <option value="administrativo">Administrativo</option>
+                    <option value="encargado">Encargado</option>
+                </select>
+
+                <input type="password" name="contrasena" placeholder="Contraseña" required>
+                <button type="submit">Registrar</button>
+                <a href="/">¿Ya tienes cuenta? Inicia sesión aquí</a>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

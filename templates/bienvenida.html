@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenido</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="gradient-background">
+    <div class="container">
+        <div class="image-container">
+            <img src="https://web.udi.edu.co/files/img/logo-udi-web.png" alt="Logo UDI">
+        </div>
+        <div class="form-container">
+            <div class="login-box">
+                <div class="user-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2>{{ mensaje }}</h2>
+                <a href="{{ url_for('login') }}">
+                    <button>Volver al login</button>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
