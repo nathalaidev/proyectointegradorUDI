@@ -42,7 +42,7 @@
             border-radius: 15px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
         }
 
         .form-box h2 {
@@ -51,15 +51,7 @@
             color: #00796b;
         }
 
-        .form-box label {
-            display: block;
-            margin-bottom: 5px;
-            color: #00796b;
-            font-weight: bold;
-        }
-
-        .form-box input,
-        .form-box select {
+        .form-box input, .form-box select {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
@@ -82,26 +74,22 @@
             background-color: #007c91;
         }
 
-        .form-box .mensaje {
-            background-color: #910000;
-            color: rgb(247, 247, 247);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-
-        .form-box .logout {
+        .form-box a {
             display: block;
-            margin-top: 15px;
+            margin-top: 10px;
             text-align: center;
             color: #00796b;
             text-decoration: none;
         }
 
-        .form-box .logout:hover {
+        .form-box a:hover {
             text-decoration: underline;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -116,27 +104,23 @@
             <h2>Reservar Equipo</h2>
 
             {% if mensaje %}
-                <div class="mensaje">{{ mensaje }}</div>
+            <div class="error">{{ mensaje }}</div>
             {% endif %}
 
-            <form method="POST">
-                <label for="id_equipo">Equipo disponible:</label>
-                <select name="id_equipo" required>
+            <form action="/reservar" method="post">
+                <select name="equipo" required>
+                    <option value="" disabled selected>Seleccione un equipo</option>
                     {% for equipo in equipos %}
-                        <option value="{{ equipo[0] }}">{{ equipo[1] }} - {{ equipo[2] }}</option>
+                    <option value="{{ equipo[0] }}">{{ equipo[1] }} - {{ equipo[2] }}</option>
                     {% endfor %}
                 </select>
 
-                <label for="fecha_inicio">Fecha de inicio:</label>
-                <input type="date" name="fecha_inicio" required>
-
-                <label for="fecha_fin">Fecha de fin:</label>
-                <input type="date" name="fecha_fin" required>
-
-                <button type="submit">Reservar</button>
+                <input type="date" name="fecha_inicio" placeholder="Fecha de inicio" required>
+                <input type="date" name="fecha_fin" placeholder="Fecha de fin" required>
+                <button type="submit">Realizar Reserva</button>
             </form>
 
-            <a class="logout" href="{{ url_for('logout') }}">Cerrar sesión</a>
+            <a href="/">Volver al inicio</a>
         </div>
     </div>
 

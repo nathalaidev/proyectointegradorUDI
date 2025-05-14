@@ -1,60 +1,50 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, flash, jsonify, render_template, request, redirect, url_for, session
 import oracledb
-import datetime
+import re
+from datetime import datetime, timedelta  # CORRECTO: así puedes usar datetime.strptime
 
-# Inicializa la aplicación Flask
 app = Flask(__name__)
-app.secret_key = 'mi_clave_secreta'  # Clave secreta para manejo de sesiones
+app.secret_key = 'mi_clave_secreta'
 
-# Inicializa Oracle Client (modo thick), se especifica el directorio del cliente Oracle
+# Oracle Instant Client
 oracledb.init_oracle_client(lib_dir=r"C:\oraclexe\instantclient_11_2")
-
-# DSN para conectarse a la base de datos Oracle
 dsn = "localhost/XE"
 
-# Ruta para el inicio de sesión
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # Obtiene los datos del formulario
         nro_documento = request.form['nro_documento']
         contrasena = request.form['contrasena']
 
         try:
-            # Conexión a la base de datos
             conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
             cursor = conn.cursor()
-            
-            # Consulta para verificar credenciales del usuario
             cursor.execute("SELECT * FROM usuario WHERE nro_documento = :1 AND contrasena = :2",
                            (nro_documento, contrasena))
             usuario = cursor.fetchone()
-            
             cursor.close()
             conn.close()
 
             if usuario:
-                # Si las credenciales son válidas, guardar en sesión
                 session['usuario'] = {
                     'nro_documento': usuario[0],
                     'nombre': usuario[1],
                     'apellido': usuario[2]
                 }
-                return redirect(url_for('reservar'))  # Redirige a la página de reservas
+                return redirect(url_for('reservar'))
             else:
-                # Credenciales incorrectas
                 mensaje = "Credenciales incorrectas"
                 return render_template('login.html', mensaje=mensaje)
+
         except Exception as e:
-            return f"Error: {e}"  # Muestra error en caso de excepción
+            return f"Error: {e}"
 
-    return render_template('login.html')  # Muestra el formulario de login si el método es GET
+    return render_template('login.html')
 
-# Ruta para el registro de nuevos usuarios
+
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'POST':
-        # Obtiene los datos del formulario de registro
         documento = request.form['documento']
         nombre = request.form['nombre']
         apellido = request.form['apellido']
@@ -62,101 +52,120 @@ def registro():
         telefono = request.form['telefono']
         tipousuario = request.form['tipousuario']
         contrasena = request.form['contrasena']
+
+        if not re.match(r'^[^@]+@[^@]+\.[a-zA-Z]{2,}$', correo):
+            flash("Correo inválido. Debe contener '@' y un dominio válido.")
+            return render_template('registro.html')
+
         try:
-            # Conexión e inserción en la tabla usuario
-            connection = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
-            cursor = connection.cursor()
+            conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
+            cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO usuario (nro_documento, nombre, apellido, correo, telefono, tipousuario, contrasena)
                 VALUES (:doc, :nom, :ape, :cor, :tel, :tipo, :contra)
             """, doc=documento, nom=nombre, ape=apellido, cor=correo, tel=telefono, tipo=tipousuario, contra=contrasena)
-            connection.commit()
+            conn.commit()
             return render_template('bienvenida.html', mensaje="Registrado exitosamente")
         except Exception as e:
-            return f"Error al registrar: {e}"  # Muestra error si ocurre
-    return render_template('registro.html')  # Muestra el formulario de registro
+            return f"Error al registrar: {e}"
 
-# Ruta para reservar equipos
+    return render_template('registro.html')
+
+
 @app.route('/reservar', methods=['GET', 'POST'])
 def reservar():
     if 'usuario' not in session:
-        return redirect(url_for('login'))  # Redirige al login si no hay sesión activa
+        return redirect(url_for('login'))
 
-    usuario = session['usuario']
-
+    mensaje = ""
     try:
-        # Conexión a la base de datos
         conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
         cursor = conn.cursor()
 
-        # Verifica si el usuario tiene una sanción vigente
-        hoy = datetime.date.today()
-        cursor.execute("""
-            SELECT COUNT(*) FROM sancion s
-            JOIN prestamo p ON s.id_prestamo = p.id_prestamo
-            WHERE p.nro_documento_usuario = :1
-            AND s.fechafinsancion > :2
-        """, (usuario['nro_documento'], hoy))
-        sanciones = cursor.fetchone()[0]
-        if sanciones > 0:
-            return render_template("reserva.html", mensaje="No puedes reservar porque tienes una sanción activa.")
-
-        # Verifica si ya tiene un préstamo activo
-        cursor.execute("""
-            SELECT COUNT(*) FROM prestamo 
-            WHERE nro_documento_usuario = :1 AND estado = 'RESERVADO'
-        """, (usuario['nro_documento'],))
-        prestamos_activos = cursor.fetchone()[0]
-        if prestamos_activos > 0:
-            return render_template("reserva.html", mensaje="Ya tienes un préstamo activo.")
+        # Equipos funcionales
+        cursor.execute("SELECT id_equipo, tipo_equipo, descripcion FROM equipo WHERE estado = 'FUNCIONAL'")
+        equipos = cursor.fetchall()
 
         if request.method == 'POST':
-            # Obtiene datos del formulario de reserva
-            id_equipo = request.form['id_equipo']
-            fecha_inicio = datetime.datetime.strptime(request.form['fecha_inicio'], '%Y-%m-%d').date()
-            fecha_fin = datetime.datetime.strptime(request.form['fecha_fin'], '%Y-%m-%d').date()
+            id_equipo = int(request.form['equipo'])
+            fecha_inicio = request.form['fecha_inicio']
+            fecha_fin = request.form['fecha_fin']
 
-            # Verifica que el rango de fechas sea válido
-            diferencia = (fecha_fin - fecha_inicio).days
-            if diferencia < 1 or diferencia > 7:
-                return render_template("reserva.html", mensaje="La reserva debe durar entre 1 y 7 días.")
+            f_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            f_fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
 
-            # Genera nuevo ID para el préstamo
+            if f_fin < f_inicio:
+                mensaje = "La fecha de fin no puede ser anterior a la de inicio."
+                return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
+
+            dias = (f_fin - f_inicio).days + 1
+            if dias < 1 or dias > 7:
+                mensaje = "La reserva debe durar mínimo 1 día y máximo 7 días."
+                return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
+
+            nro_doc = session['usuario']['nro_documento']
+
+            # ¿Tiene préstamo activo?
+            cursor.execute("""
+                SELECT COUNT(*) FROM prestamo
+                WHERE nro_documento_usuario = :doc AND fecha_devolucion IS NULL
+            """, {'doc': nro_doc})
+            prestamo_activo = cursor.fetchone()[0]
+
+            if prestamo_activo > 0:
+                mensaje = "Ya tienes un préstamo activo. Devuélvelo antes de hacer uno nuevo."
+                return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
+
+            # ¿Equipo disponible en fechas?
+            cursor.execute("""
+                SELECT COUNT(*) FROM prestamo
+                WHERE id_equipo = :id
+                AND (
+                    (fecha_prestamo <= :fin AND fecha_limite >= :inicio)
+                )
+            """, {'id': id_equipo, 'inicio': f_inicio, 'fin': f_fin})
+            conflicto = cursor.fetchone()[0]
+
+            if conflicto > 0:
+                mensaje = "El equipo no está disponible en las fechas seleccionadas."
+                return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
+
+            # Obtener nuevo ID
             cursor.execute("SELECT NVL(MAX(id_prestamo), 0) + 1 FROM prestamo")
             nuevo_id = cursor.fetchone()[0]
 
-            # Inserta el nuevo préstamo
+            # Insertar préstamo
             cursor.execute("""
                 INSERT INTO prestamo (id_prestamo, fecha_prestamo, fecha_limite, estado, id_equipo, nro_documento_usuario)
-                VALUES (:1, :2, :3, 'RESERVADO', :4, :5)
-            """, (nuevo_id, fecha_inicio, fecha_fin, id_equipo, usuario['nro_documento']))
+                VALUES (:id, :inicio, :fin, 'RESERVADO', :id_equipo, :doc)
+            """, {
+                'id': nuevo_id,
+                'inicio': f_inicio,
+                'fin': f_fin,
+                'id_equipo': id_equipo,
+                'doc': nro_doc
+            })
 
-            # Actualiza el estado del equipo a 'RESERVADO'
-            cursor.execute("UPDATE equipo SET estado = 'RESERVADO' WHERE id_equipo = :1", (id_equipo,))
-
-            # Guarda los cambios
             conn.commit()
             mensaje = "Reserva realizada exitosamente."
-            cursor.close()
-            conn.close()
-            return render_template("reserva.html", mensaje=mensaje)
 
-        # Si el método es GET, muestra los equipos disponibles
-        cursor.execute("SELECT id_equipo, tipo_equipo, descripcion FROM equipo WHERE estado = 'DISPONIBLE'")
-        equipos = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return render_template("reserva.html", usuario=usuario, equipos=equipos)
+        return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
 
     except Exception as e:
-        return f"Error al reservar: {e}"  # Muestra mensaje en caso de error
+        return f"Error al reservar: {e}"
 
-# Ruta para cerrar sesión
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+
 @app.route('/logout')
 def logout():
-    session.pop('usuario', None)  # Elimina el usuario de la sesión
-    return redirect(url_for('login'))  # Redirige al login
+    session.pop('usuario', None)
+    return redirect(url_for('login'))
 
-# Inicia la aplicación
+
 if __name__ == '__main__':
-    app.run(debug=True)  # Ejecuta en modo debug
+    app.run(debug=True)
