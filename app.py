@@ -10,6 +10,7 @@ app.secret_key = 'mi_clave_secreta'
 oracledb.init_oracle_client(lib_dir=r"C:\oraclexe\instantclient_11_2")
 dsn = "localhost/XE"
 
+#login
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -19,27 +20,45 @@ def login():
         try:
             conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM usuario WHERE nro_documento = :1 AND contrasena = :2",
-                           (nro_documento, contrasena))
-            usuario = cursor.fetchone()
-            cursor.close()
-            conn.close()
 
-            if usuario:
-                session['usuario'] = {
-                    'nro_documento': usuario[0],
-                    'nombre': usuario[1],
-                    'apellido': usuario[2]
-                }
-                return redirect(url_for('reservar'))
-            else:
-                mensaje = "Credenciales incorrectas"
+            # Buscar si el usuario existe
+            cursor.execute("SELECT * FROM usuario WHERE nro_documento = :1", (nro_documento,))
+            usuario = cursor.fetchone()
+
+            if not usuario:
+                mensaje = "El usuario no existe."
                 return render_template('login.html', mensaje=mensaje)
+
+            # Comparar contraseña
+            if usuario[6] != contrasena:  # Índice 6 es 'contrasena'
+                mensaje = "Credenciales incorrectas."
+                return render_template('login.html', mensaje=mensaje)
+
+            # Inicio de sesión correcto
+            session['usuario'] = {
+                'nro_documento': usuario[0],
+                'nombre': usuario[1],
+                'apellido': usuario[2]
+            }
+            return redirect(url_for('home'))
 
         except Exception as e:
             return f"Error: {e}"
 
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
+
     return render_template('login.html')
+
+@app.route('/home')
+def home():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    return render_template('home.html')
+
 
 
 @app.route('/registro', methods=['GET', 'POST'])
@@ -60,18 +79,36 @@ def registro():
         try:
             conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
             cursor = conn.cursor()
+
+            # Verificar si el usuario ya existe
+            cursor.execute("SELECT COUNT(*) FROM usuario WHERE nro_documento = :doc", {'doc': documento})
+            existe = cursor.fetchone()[0]
+
+            if existe > 0:
+                flash("El usuario ya está registrado. Por favor contacte a soporte.")
+                return render_template('registro.html')
+
+            # Insertar nuevo usuario
             cursor.execute("""
                 INSERT INTO usuario (nro_documento, nombre, apellido, correo, telefono, tipousuario, contrasena)
                 VALUES (:doc, :nom, :ape, :cor, :tel, :tipo, :contra)
             """, doc=documento, nom=nombre, ape=apellido, cor=correo, tel=telefono, tipo=tipousuario, contra=contrasena)
             conn.commit()
             return render_template('bienvenida.html', mensaje="Registrado exitosamente")
+
         except Exception as e:
             return f"Error al registrar: {e}"
+
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
 
     return render_template('registro.html')
 
 
+#reservar equipo
 @app.route('/reservar', methods=['GET', 'POST'])
 def reservar():
     if 'usuario' not in session:
@@ -105,15 +142,28 @@ def reservar():
 
             nro_doc = session['usuario']['nro_documento']
 
-            # ¿Tiene préstamo activo?
+            # ¿Tiene préstamo activo actual (fecha_devolución NULL y aún no ha vencido)?
             cursor.execute("""
                 SELECT COUNT(*) FROM prestamo
-                WHERE nro_documento_usuario = :doc AND fecha_devolucion IS NULL
+                WHERE nro_documento_usuario = :doc 
+                AND fecha_devolucion IS NULL
+                AND fecha_limite >= TRUNC(SYSDATE)
             """, {'doc': nro_doc})
             prestamo_activo = cursor.fetchone()[0]
-
             if prestamo_activo > 0:
                 mensaje = "Ya tienes un préstamo activo. Devuélvelo antes de hacer uno nuevo."
+                return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
+
+            # ¿Tiene sanciones activas?
+            cursor.execute("""
+                SELECT COUNT(*) FROM sancion s
+                JOIN prestamo p ON s.id_prestamo = p.id_prestamo
+                WHERE p.nro_documento_usuario = :doc
+                AND s.fechafinsancion >= TRUNC(SYSDATE)
+            """, {'doc': nro_doc})
+            sanciones_activas = cursor.fetchone()[0]
+            if sanciones_activas > 0:
+                mensaje = "Tienes una sanción activa. No puedes hacer préstamos actualmente."
                 return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
 
             # ¿Equipo disponible en fechas?
@@ -130,11 +180,11 @@ def reservar():
                 mensaje = "El equipo no está disponible en las fechas seleccionadas."
                 return render_template('reserva.html', equipos=equipos, mensaje=mensaje)
 
-            # Obtener nuevo ID
+            # Obtener nuevo ID de préstamo
             cursor.execute("SELECT NVL(MAX(id_prestamo), 0) + 1 FROM prestamo")
             nuevo_id = cursor.fetchone()[0]
 
-            # Insertar préstamo
+            # Insertar el nuevo préstamo
             cursor.execute("""
                 INSERT INTO prestamo (id_prestamo, fecha_prestamo, fecha_limite, estado, id_equipo, nro_documento_usuario)
                 VALUES (:id, :inicio, :fin, 'RESERVADO', :id_equipo, :doc)
@@ -161,10 +211,70 @@ def reservar():
             conn.close()
 
 
+
+#sanciones
+@app.route('/sanciones')
+def sanciones():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+
+    nro_documento = session['usuario']['nro_documento']
+
+    conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
+    cursor = conn.cursor()
+    query = """
+        SELECT s.ID_SANCION, s.MOTIVO, s.DESCRIPCION, s.FECHA_SANCION, s.FECHAFINSANCION
+        FROM SANCION s
+        JOIN PRESTAMO p ON s.ID_PRESTAMO = p.ID_PRESTAMO
+        WHERE p.NRO_DOCUMENTO_USUARIO = :nro_documento
+          AND SYSDATE BETWEEN s.FECHA_SANCION AND s.FECHAFINSANCION
+    """
+    cursor.execute(query, nro_documento=nro_documento)
+    sanciones_activas = cursor.fetchall()
+    cursor.close()
+
+    return render_template('sanciones.html', sanciones=sanciones_activas)
+
+#historialPrestamos
+@app.route('/historial')
+def historial():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
+        cursor = conn.cursor()
+        nro_doc = session['usuario']['nro_documento']
+
+        cursor.execute("""
+            SELECT e.tipo_equipo, p.fecha_prestamo, p.fecha_devolucion, p.fecha_limite
+            FROM prestamo p
+            JOIN equipo e ON p.id_equipo = e.id_equipo
+            WHERE p.nro_documento_usuario = :doc
+            ORDER BY p.fecha_prestamo DESC
+        """, {'doc': nro_doc})
+
+        prestamos = cursor.fetchall()
+        return render_template("historial.html", prestamos=prestamos)
+
+    except Exception as e:
+        return f"Error al obtener historial: {e}"
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+
+
+
+
 @app.route('/logout')
 def logout():
-    session.pop('usuario', None)
+    session.clear()
     return redirect(url_for('login'))
+
 
 
 if __name__ == '__main__':

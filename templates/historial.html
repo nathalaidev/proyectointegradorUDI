@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Historial de Préstamos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #e0f7fa, #b2ebf2);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 30px 40px;
+            max-width: 600px;
+            margin: 40px 0;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #007c91;
+            margin-bottom: 25px;
+        }
+        .prestamo {
+            background-color: #f0f9fb;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .prestamo strong {
+            color: #0097a7;
+        }
+        .btn-volver {
+            margin-top: auto;
+            align-self: center;
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #0097a7;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s ease;
+        }
+        .btn-volver:hover {
+            background-color: #007c91;
+        }
+        .no-prestamos {
+            text-align: center;
+            color: #555;
+            font-size: 18px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Historial de Préstamos</h1>
+
+        {% if prestamos %}
+            {% for tipo_equipo, fecha_prestamo, fecha_devolucion, fecha_limite in prestamos %}
+                <div class="prestamo">
+                    <p><strong>Equipo:</strong> {{ tipo_equipo }}</p>
+                    <p><strong>Fecha de préstamo:</strong> {{ fecha_prestamo.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Fecha de devolución:</strong> 
+                        {{ fecha_devolucion.strftime('%d/%m/%Y') if fecha_devolucion else fecha_limite.strftime('%d/%m/%Y') }}
+                    </p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-prestamos">No tienes préstamos registrados.</p>
+        {% endif %}
+
+        <a href="{{ url_for('home') }}" class="btn-volver">Volver al menú</a>
+    </div>
+</body>
+</html>

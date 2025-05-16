@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inicio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #e0f7fa, #b2ebf2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .menu {
+            background-color: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 300px;
+        }
+        .menu button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 18px;
+            color: white;
+            background-color: #0097a7;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .menu button:hover {
+            background-color: #007c91;
+        }
+        .menu button.logout {
+            background-color: #d32f2f;
+        }
+        .menu button.logout:hover {
+            background-color: #9a2424;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="menu">
+        <button onclick="location.href='/sanciones'">Sanciones</button>
+        <button onclick="location.href='/reservar'">Pedir Préstamo</button>
+        <button onclick="location.href='/historial'">Historial de Préstamos</button>
+        <button class="logout" onclick="location.href='/logout'">Cerrar sesión</button>
+    </div>
+
+</body>
+</html>
