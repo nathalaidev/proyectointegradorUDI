@@ -3,6 +3,7 @@ import oracledb
 import re
 from datetime import datetime, timedelta  # CORRECTO: así puedes usar datetime.strptime
 
+
 app = Flask(__name__)
 app.secret_key = 'mi_clave_secreta'
 
@@ -38,9 +39,13 @@ def login():
             session['usuario'] = {
                 'nro_documento': usuario[0],
                 'nombre': usuario[1],
-                'apellido': usuario[2]
+                'apellido': usuario[2],
+                'tipousuario': usuario[5]  # Índice 5 es TIPOUSUARIO
             }
-            return redirect(url_for('home'))
+            if usuario[5].lower() == 'encargado':
+                 return redirect(url_for('home_encargado'))
+            else:
+                return redirect(url_for('home'))
 
         except Exception as e:
             return f"Error: {e}"
@@ -59,6 +64,40 @@ def home():
         return redirect(url_for('login'))
     return render_template('home.html')
 
+@app.route('/home_encargado')
+def home_encargado():
+    if 'usuario' not in session or session['usuario']['tipousuario'].lower() != 'encargado':
+        return redirect(url_for('login'))
+    return render_template('home_encargado.html')
+
+@app.route('/ver_historial_usuario', methods=['POST'])
+def ver_historial_usuario():
+    documento = request.form['documento']
+    
+    try:
+        conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT e.tipo_equipo, p.fecha_prestamo, p.fecha_devolucion, p.fecha_limite
+            FROM prestamo p
+            JOIN equipo e ON p.id_equipo = e.id_equipo
+            WHERE p.nro_documento_usuario = :doc
+            ORDER BY p.fecha_prestamo DESC
+        """, {'doc': documento})
+
+        prestamos = cursor.fetchall()
+        
+    except Exception as e:
+        return f"Error al obtener historial: {e}"
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+    return render_template("historial.html", prestamos=prestamos, documento=documento)
 
 
 @app.route('/registro', methods=['GET', 'POST'])
@@ -266,6 +305,46 @@ def historial():
         if 'conn' in locals():
             conn.close()
 
+
+@app.route('/historial_encargado', methods=['GET', 'POST'])
+def historial_encargado():
+    if 'usuario' not in session or session['usuario']['tipousuario'].lower() != 'encargado':
+        return redirect(url_for('login'))
+
+    prestamos = []
+    documento = None
+    mensaje = ""
+
+    if request.method == 'POST':
+        documento = request.form.get('documento')
+        if documento:
+            try:
+                conn = oracledb.connect(user='prestamo', password='prestamo', dsn=dsn)
+                cursor = conn.cursor()
+
+                cursor.execute("""
+                    SELECT e.tipo_equipo, p.fecha_prestamo, p.fecha_devolucion, p.fecha_limite, u.nombre, u.apellido
+                    FROM prestamo p
+                    JOIN equipo e ON p.id_equipo = e.id_equipo
+                    JOIN usuario u ON p.nro_documento_usuario = u.nro_documento
+                    WHERE p.nro_documento_usuario = :doc
+                    ORDER BY p.fecha_prestamo DESC
+                """, {'doc': documento})
+
+                prestamos = cursor.fetchall()
+
+            except Exception as e:
+                mensaje = f"Error al obtener historial: {e}"
+
+            finally:
+                if 'cursor' in locals():
+                    cursor.close()
+                if 'conn' in locals():
+                    conn.close()
+        else:
+            mensaje = "Por favor ingrese un número de documento."
+
+    return render_template('historial_encargado.html', prestamos=prestamos, documento=documento, mensaje=mensaje)
 
 
 

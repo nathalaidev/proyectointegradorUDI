@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Historial de Préstamos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #e0f7fa, #b2ebf2);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 30px 40px;
+            max-width: 800px;
+            margin: 40px 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            text-align: center;
+            color: #007c91;
+            margin-bottom: 25px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        thead {
+            background-color: #0097a7;
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        thead th {
+            padding: 12px;
+            text-align: left;
+        }
+        tbody tr {
+            background-color: #f0f9fb;
+            border-bottom: 1px solid #ddd;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #e1f2f7;
+        }
+        tbody td {
+            padding: 12px;
+            color: #007c91;
+        }
+        tbody tr:hover {
+            background-color: #b2ebf2;
+            cursor: default;
+        }
+        .no-registros {
+            text-align: center;
+            color: #555;
+            font-size: 18px;
+            padding: 20px 0;
+        }
+        .btn-volver {
+            align-self: center;
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #0097a7;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s ease;
+        }
+        .btn-volver:hover {
+            background-color: #007c91;
+        }
+        @media (max-width: 600px) {
+            thead, tbody, tr, th, td {
+                display: block;
+            }
+            thead tr {
+                display: none;
+            }
+            tbody tr {
+                margin-bottom: 20px;
+                background-color: #f0f9fb;
+                padding: 15px;
+                border-radius: 10px;
+            }
+            tbody td {
+                padding: 10px 15px;
+                position: relative;
+                padding-left: 50%;
+                text-align: left;
+            }
+            tbody td::before {
+                position: absolute;
+                left: 15px;
+                width: 45%;
+                white-space: nowrap;
+                font-weight: bold;
+                color: #0097a7;
+            }
+            tbody td:nth-of-type(1)::before { content: "Tipo de Equipo"; }
+            tbody td:nth-of-type(2)::before { content: "Fecha Préstamo"; }
+            tbody td:nth-of-type(3)::before { content: "Fecha Devolución"; }
+            tbody td:nth-of-type(4)::before { content: "Fecha Límite"; }
+            tbody td:nth-of-type(5)::before { content: "Nombre"; }
+            tbody td:nth-of-type(6)::before { content: "Apellido"; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Historial de Préstamos</h1>
+
+        {% if prestamos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo de Equipo</th>
+                    <th>Fecha Préstamo</th>
+                    <th>Fecha Devolución</th>
+                    <th>Fecha Límite</th>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tipo_equipo, fecha_prestamo, fecha_devolucion, fecha_limite, nombre, apellido in prestamos %}
+                <tr>
+                    <td>{{ tipo_equipo }}</td>
+                    <td>{{ fecha_prestamo.strftime('%d/%m/%Y') if fecha_prestamo else '' }}</td>
+                    <td>{{ fecha_devolucion.strftime('%d/%m/%Y') if fecha_devolucion else '' }}</td>
+                    <td>{{ fecha_limite.strftime('%d/%m/%Y') if fecha_limite else '' }}</td>
+                    <td>{{ nombre }}</td>
+                    <td>{{ apellido }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p class="no-registros">No hay registros de préstamos.</p>
+        {% endif %}
+
+        <a href="{{ url_for('home_encargado') }}" class="btn-volver">Volver al menú</a>
+    </div>
+</body>
+</html>

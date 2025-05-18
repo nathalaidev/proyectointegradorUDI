@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Home Encargado</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #e0f7fa, #b2ebf2);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #007c91;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 40px 50px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 30px;
+            color: #007c91;
+            font-size: 2.2em;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 1.5px solid #0097a7;
+            margin-bottom: 25px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus {
+            border-color: #007c91;
+            outline: none;
+        }
+        button {
+            background-color: #0097a7;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #007c91;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bienvenido Encargado</h1>
+        <form action="/historial_encargado" method="post">
+            <label for="documento">Ingresa el N° de documento del usuario:</label>
+            <input type="text" id="documento" name="documento" required />
+            <button type="submit">Buscar</button>
+            <button class="logout" onclick="location.href='/logout'">Cerrar sesión</button>
+        </form>
+    </div>
+</body>
+</html>
